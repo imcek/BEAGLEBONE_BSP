@@ -11,4 +11,5 @@
 void foo(void)
 {
     puts("Hello, I'm a shared library");
+    puts("YES, I'm a shared library");
 }
