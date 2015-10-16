@@ -13,7 +13,7 @@ extern "C" {
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNative_initialize
-  (JNIEnv *, jobject);
+  (JNIEnv *, jclass);
 
 /*
  * Class:     org_embedded_beaglebone_driver_kernel_chardev_BBNative
@@ -21,7 +21,23 @@ JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNati
  * Signature: (CC)V
  */
 JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNative_gpioSetValue
-  (JNIEnv *, jobject, jchar, jchar);
+  (JNIEnv *, jclass, jchar, jchar);
+
+/*
+ * Class:     org_embedded_beaglebone_driver_kernel_chardev_BBNative
+ * Method:    sendLcdCommand
+ * Signature: (C)V
+ */
+JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNative_sendLcdCommand
+  (JNIEnv *, jclass, jchar);
+
+/*
+ * Class:     org_embedded_beaglebone_driver_kernel_chardev_BBNative
+ * Method:    writeLcdLine
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNative_writeLcdLine
+  (JNIEnv *, jclass, jstring);
 
 /*
  * Class:     org_embedded_beaglebone_driver_kernel_chardev_BBNative
@@ -29,7 +45,7 @@ JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNati
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_org_embedded_beaglebone_driver_kernel_chardev_BBNative_shutDown
-  (JNIEnv *, jobject);
+  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

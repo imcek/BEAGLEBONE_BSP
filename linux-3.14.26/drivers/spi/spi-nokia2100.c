@@ -53,8 +53,8 @@
  * nodes, since there is no fixed association of minor numbers with any
  * particular SPI bus or device.
  */
-#define SPIDEV_MAJOR			153	/* assigned */
-#define N_SPI_MINORS			32	/* ... up to 256 */
+#define SPIDEV_MAJOR			152	/* assigned */
+#define N_SPI_MINORS			64	/* ... up to 256 */
 
 static DECLARE_BITMAP(minors, N_SPI_MINORS);
 
@@ -75,7 +75,7 @@ static DECLARE_BITMAP(minors, N_SPI_MINORS);
 				| SPI_LSB_FIRST | SPI_3WIRE | SPI_LOOP \
 				| SPI_NO_CS | SPI_READY)
 
-struct spidev_data {
+struct graphic_lcd_data {
 	dev_t			devt;
 	spinlock_t		spi_lock;
 	struct spi_device	*spi;
@@ -100,18 +100,18 @@ MODULE_PARM_DESC(bufsiz, "data bytes in biggest supported SPI message");
  * We can't use the standard synchronous wrappers for file I/O; we
  * need to protect against async removal of the underlying spi_device.
  */
-static void spidev_complete(void *arg)
+static void spi_nokia2100_complete(void *arg)
 {
 	complete(arg);
 }
 
 static ssize_t
-spidev_sync(struct spidev_data *spidev, struct spi_message *message)
+spi_nokia2100_sync(struct graphic_lcd_data *spidev, struct spi_message *message)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
 	int status;
 
-	message->complete = spidev_complete;
+	message->complete = spi_nokia2100_complete;
 	message->context = &done;
 
 	spin_lock_irq(&spidev->spi_lock);
@@ -131,7 +131,7 @@ spidev_sync(struct spidev_data *spidev, struct spi_message *message)
 }
 
 static inline ssize_t
-spidev_sync_write(struct spidev_data *spidev, size_t len)
+spi_nokia2100_sync_write(struct graphic_lcd_data *spidev, size_t len)
 {
 	struct spi_transfer	t = {
 			.tx_buf		= spidev->buffer,
@@ -141,11 +141,11 @@ spidev_sync_write(struct spidev_data *spidev, size_t len)
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
-	return spidev_sync(spidev, &m);
+	return spi_nokia2100_sync(spidev, &m);
 }
 
 static inline ssize_t
-spidev_sync_read(struct spidev_data *spidev, size_t len)
+spi_nokia2100_sync_read(struct graphic_lcd_data *spidev, size_t len)
 {
 	struct spi_transfer	t = {
 			.rx_buf		= spidev->buffer,
@@ -155,16 +155,16 @@ spidev_sync_read(struct spidev_data *spidev, size_t len)
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
-	return spidev_sync(spidev, &m);
+	return spi_nokia2100_sync(spidev, &m);
 }
 
 /*-------------------------------------------------------------------------*/
 
 /* Read-only message with current device setup */
 static ssize_t
-spidev_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+spi_nokia2100_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-	struct spidev_data	*spidev;
+	struct graphic_lcd_data	*spidev;
 	ssize_t			status = 0;
 
 	/* chipselect only toggles at start or end of operation */
@@ -174,7 +174,7 @@ spidev_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 	spidev = filp->private_data;
 
 	mutex_lock(&spidev->buf_lock);
-	status = spidev_sync_read(spidev, count);
+	status = spi_nokia2100_sync_read(spidev, count);
 	if (status > 0) {
 		unsigned long	missing;
 
@@ -191,10 +191,10 @@ spidev_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 
 /* Write-only message with current device setup */
 static ssize_t
-spidev_write(struct file *filp, const char __user *buf,
+spi_nokia2100_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *f_pos)
 {
-	struct spidev_data	*spidev;
+	struct graphic_lcd_data	*spidev;
 	ssize_t			status = 0;
 	unsigned long		missing;
 
@@ -207,7 +207,7 @@ spidev_write(struct file *filp, const char __user *buf,
 	mutex_lock(&spidev->buf_lock);
 	missing = copy_from_user(spidev->buffer, buf, count);
 	if (missing == 0)
-		status = spidev_sync_write(spidev, count);
+		status = spi_nokia2100_sync_write(spidev, count);
 	else
 		status = -EFAULT;
 	mutex_unlock(&spidev->buf_lock);
@@ -215,7 +215,7 @@ spidev_write(struct file *filp, const char __user *buf,
 	return status;
 }
 
-static int spidev_message(struct spidev_data *spidev,
+static int spi_nokia2100_message(struct graphic_lcd_data *spidev,
 		struct spi_ioc_transfer *u_xfers, unsigned n_xfers)
 {
 	struct spi_message	msg;
@@ -282,7 +282,7 @@ static int spidev_message(struct spidev_data *spidev,
 		spi_message_add_tail(k_tmp, &msg);
 	}
 
-	status = spidev_sync(spidev, &msg);
+	status = spi_nokia2100_sync(spidev, &msg);
 	if (status < 0)
 		goto done;
 
@@ -307,11 +307,11 @@ done:
 }
 
 static long
-spidev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+spi_nokia2100_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int			err = 0;
 	int			retval = 0;
-	struct spidev_data	*spidev;
+	struct graphic_lcd_data	*spidev;
 	struct spi_device	*spi;
 	u32			tmp;
 	unsigned		n_ioc;
@@ -464,7 +464,7 @@ spidev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		/* translate to spi_message, execute */
-		retval = spidev_message(spidev, ioc, n_ioc);
+		retval = spi_nokia2100_message(spidev, ioc, n_ioc);
 		kfree(ioc);
 		break;
 	}
@@ -476,17 +476,18 @@ spidev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 #ifdef CONFIG_COMPAT
 static long
-spidev_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+spi_nokia2100_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	return spidev_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
 }
 #else
-#define spidev_compat_ioctl NULL
+#define spi_nokia2100_compat_ioctl NULL
 #endif /* CONFIG_COMPAT */
 
-static int spidev_open(struct inode *inode, struct file *filp)
+static int spi_nokia2100_open(struct inode *inode, struct file *filp)
 {
-	struct spidev_data	*spidev;
+	printk("SPIDEV_OPEN_RECEP");
+	struct graphic_lcd_data	*spidev;
 	int			status = -ENXIO;
 
 	mutex_lock(&device_list_lock);
@@ -517,9 +518,9 @@ static int spidev_open(struct inode *inode, struct file *filp)
 	return status;
 }
 
-static int spidev_release(struct inode *inode, struct file *filp)
+static int spi_nokia2100_release(struct inode *inode, struct file *filp)
 {
-	struct spidev_data	*spidev;
+	struct graphic_lcd_data	*spidev;
 	int			status = 0;
 
 	mutex_lock(&device_list_lock);
@@ -553,12 +554,12 @@ static const struct file_operations spidev_fops = {
 	 * gets more complete API coverage.  It'll simplify things
 	 * too, except for the locking.
 	 */
-	.write =	spidev_write,
-	.read =		spidev_read,
-	.unlocked_ioctl = spidev_ioctl,
-	.compat_ioctl = spidev_compat_ioctl,
-	.open =		spidev_open,
-	.release =	spidev_release,
+	.write =	spi_nokia2100_write,
+	.read =		spi_nokia2100_read,
+	.unlocked_ioctl = spi_nokia2100_ioctl,
+	.compat_ioctl = spi_nokia2100_compat_ioctl,
+	.open =		spi_nokia2100_open,
+	.release =	spi_nokia2100_release,
 	.llseek =	no_llseek,
 };
 
@@ -573,10 +574,11 @@ static struct class *spidev_class;
 
 /*-------------------------------------------------------------------------*/
 
-static int spidev_probe(struct spi_device *spi)
+static int spi_nokia2100_probe(struct spi_device *spi)
 {
-	printk("SPIDEV_PROBE_ORIGINAL");
-	struct spidev_data	*spidev;
+	printk("SPIDEV_PROBE_RECEP");
+
+	struct graphic_lcd_data	*spidev;
 	int			status;
 	unsigned long		minor;
 
@@ -602,7 +604,7 @@ static int spidev_probe(struct spi_device *spi)
 
 		spidev->devt = MKDEV(SPIDEV_MAJOR, minor);
 		dev = device_create(spidev_class, &spi->dev, spidev->devt,
-				    spidev, "spidev%d.%d",
+				    spidev, "graphic_lcd%d.%d",
 				    spi->master->bus_num, spi->chip_select);
 		status = PTR_ERR_OR_ZERO(dev);
 	} else {
@@ -623,9 +625,9 @@ static int spidev_probe(struct spi_device *spi)
 	return status;
 }
 
-static int spidev_remove(struct spi_device *spi)
+static int spi_nokia2100_remove(struct spi_device *spi)
 {
-	struct spidev_data	*spidev = spi_get_drvdata(spi);
+	struct graphic_lcd_data	*spidev = spi_get_drvdata(spi);
 
 	/* make sure ops on existing fds can abort cleanly */
 	spin_lock_irq(&spidev->spi_lock);
@@ -653,12 +655,12 @@ MODULE_DEVICE_TABLE(of, spidev_dt_ids);
 
 static struct spi_driver spidev_spi_driver = {
 	.driver = {
-		.name =		"spidev",
+		.name =		"graphic_lcd",
 		.owner =	THIS_MODULE,
 		.of_match_table = of_match_ptr(spidev_dt_ids),
 	},
-	.probe =	spidev_probe,
-	.remove =	spidev_remove,
+	.probe =	spi_nokia2100_probe,
+	.remove =	spi_nokia2100_remove,
 
 	/* NOTE:  suspend/resume methods are not necessary here.
 	 * We don't do anything except pass the requests to/from
@@ -669,20 +671,21 @@ static struct spi_driver spidev_spi_driver = {
 
 /*-------------------------------------------------------------------------*/
 
-static int __init spidev_init(void)
+static int __init spi_nokia2100_init(void)
 {
 	int status;
+	printk("SPIDEV_INIT_RECEP");
 
 	/* Claim our 256 reserved device numbers.  Then register a class
 	 * that will key udev/mdev to add/remove /dev nodes.  Last, register
 	 * the driver which manages those device numbers.
 	 */
 	BUILD_BUG_ON(N_SPI_MINORS > 256);
-	status = register_chrdev(SPIDEV_MAJOR, "spi", &spidev_fops);
+	status = register_chrdev(SPIDEV_MAJOR, "spi_graphic", &spidev_fops);
 	if (status < 0)
 		return status;
 
-	spidev_class = class_create(THIS_MODULE, "spidev");
+	spidev_class = class_create(THIS_MODULE, "graphic_lcd");
 	if (IS_ERR(spidev_class)) {
 		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 		return PTR_ERR(spidev_class);
@@ -695,15 +698,15 @@ static int __init spidev_init(void)
 	}
 	return status;
 }
-module_init(spidev_init);
+module_init(spi_nokia2100_init);
 
-static void __exit spidev_exit(void)
+static void __exit spi_nokia2100_exit(void)
 {
 	spi_unregister_driver(&spidev_spi_driver);
 	class_destroy(spidev_class);
 	unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 }
-module_exit(spidev_exit);
+module_exit(spi_nokia2100_exit);
 
 MODULE_AUTHOR("Andrea Paterniani, <a.paterniani@swapp-eng.it>");
 MODULE_DESCRIPTION("User mode SPI device interface");

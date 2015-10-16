@@ -12,7 +12,8 @@
 #define BBNATIVE_DEVICE_NAME "/dev/bbnative"
 
 #define GPIO_SET_VALUE 10
-#define GPIO_GET_VALUE 11
+#define SEND_COMMAND 11
+#define WRITE_LINE 12
 #define FALSE 0
 #define TRUE 1
 
