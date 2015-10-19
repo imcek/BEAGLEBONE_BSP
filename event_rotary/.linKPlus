@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<General-info>
+    <Driver-name>event_rotary</Driver-name>
+    <Toolchain>Linux GCC</Toolchain>
+    <Architecture>x86_64</Architecture>
+    <hostMachineKernel>false</hostMachineKernel>
+    <Kernel-Version>/home/recep/git/BEAGLEBONE_BSP/linux-3.14.26</Kernel-Version>
+    <Licence>GPL</Licence>
+    <Author-name>Recep Yigitbasi</Author-name>
+    <location>/home/recep/workspace</location>
+    <wizardType>false</wizardType>
+    <wizardTypeInfo>false</wizardTypeInfo>
+</General-info>
